@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WhatsApp 同步</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial; }
+        #status { 
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            background: #f0f0f0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>WhatsApp Web 同步</h1>
+    <div id="status">正在初始化浏览器...</div>
+
+    <script>
+        let checkInterval;
+        
+        async function initSync() {
+            try {
+                // 初始化同步连接
+                const response = await fetch('/api/messages/sync/start', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                // 更新状态显示
+                const statusDiv = document.getElementById('status');
+                statusDiv.textContent = "请扫描 WhatsApp Web 二维码...";
+                statusDiv.className = 'success';
+
+                // 开始检查同步状态
+                checkInterval = setInterval(async () => {
+                    const statusResponse = await fetch('/api/messages/sync/status');
+                    const status = await statusResponse.json();
+                    
+                    if (status.connected) {
+                        clearInterval(checkInterval);
+                        statusDiv.textContent = "连接成功！正在同步消息...";
+                        window.opener.postMessage({ type: 'SYNC_SUCCESS' }, '*');
+                        setTimeout(() => window.close(), 2000);
+                    }
+                }, 1000);
+
+            } catch (error) {
+                document.getElementById('status').textContent = `错误: ${error.message}`;
+                document.getElementById('status').className = 'error';
+                window.opener.postMessage({ type: 'SYNC_ERROR', error: error.message }, '*');
+            }
+        }
+
+        // 初始化同步流程
+        initSync();
+    </script>
+</body>
+</html>

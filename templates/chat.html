@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System X - Chat</title>
+    <style>
+        .chat-container {
+            display: flex;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        
+        /* Contacts Panel */
+        .contacts-panel {
+            width: 30%;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sync-controls {
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+        
+        #contacts-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .contact {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .contact:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .contact-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #007bff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .contact-info {
+            flex: 1;
+        }
+        
+        .contact-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .contact-status {
+            font-size: 0.8em;
+            color: #666;
+        }
+        
+        /* Chat Panel */
+        .chat-panel {
+            width: 70%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .messages-area {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 70%;
+        }
+        
+        .message.sent {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .message.received {
+            background-color: white;
+            margin-right: auto;
+            border: 1px solid #ddd;
+        }
+        
+        .message-timestamp {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        #start-sync {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        #stop-sync {
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Contacts Panel -->
+        <div class="contacts-panel" id="contacts-panel">
+            <div class="sync-controls">
+                <button id="start-sync">Start Sync</button>
+                <button id="stop-sync">Stop Sync</button>
+            </div>
+            <div id="contacts-list">
+                <!-- Contacts will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Chat Panel -->
+        <div class="chat-panel">
+            <div class="header">
+                <div class="contact-avatar" id="current-contact-avatar">C</div>
+                <h2 id="current-contact">Select a contact</h2>
+            </div>
+            <div class="messages-area" id="messages-area">
+                <!-- Messages will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const contactsList = document.getElementById('contacts-list');
+        const messagesArea = document.getElementById('messages-area');
+        const currentContact = document.getElementById('current-contact');
+        const currentContactAvatar = document.getElementById('current-contact-avatar');
+        const startSyncBtn = document.getElementById('start-sync');
+        const stopSyncBtn = document.getElementById('stop-sync');
+
+        // Load contacts
+        async function loadContacts() {
+            try {
+                const response = await fetch('/api/contacts');
+                const contacts = await response.json();
+                
+                contactsList.innerHTML = '';
+                
+                contacts.forEach(contact => {
+                    const contactDiv = document.createElement('div');
+                    contactDiv.className = 'contact';
+                    contactDiv.innerHTML = `
+                        <div class="contact-avatar">${contact.name[0]}</div>
+                        <div class="contact-info">
+                            <div class="contact-name">${contact.name}</div>
+                            <div class="contact-status">${contact.status}</div>
+                        </div>
+                    `;
+                    
+                    contactDiv.addEventListener('click', () => loadMessages(contact.id));
+                    contactsList.appendChild(contactDiv);
+                });
+            } catch (error) {
+                console.error('Failed to load contacts:', error);
+            }
+        }
+
+        // Load messages for selected contact
+        async function loadMessages(contactId) {
+            try {
+                const response = await fetch(`/api/messages/${contactId}`);
+                const messages = await response.json();
+                
+                messagesArea.innerHTML = '';
+                
+                messages.forEach(msg => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${msg.sender === 'me' ? 'sent' : 'received'}`;
+                    messageDiv.innerHTML = `
+                        <div>${msg.content}</div>
+                        <div class="message-timestamp">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+                    `;
+                    messagesArea.appendChild(messageDiv);
+                });
+                
+                // Scroll to bottom
+                messagesArea.scrollTop = messagesArea.scrollHeight;
+            } catch (error) {
+                console.error('Failed to load messages:', error);
+            }
+        }
+
+        // Start sync with SSE
+        startSyncBtn.addEventListener('click', async () => {
+            try {
+                // Open WhatsApp Web directly in Chrome
+                const syncWindow = window.open('https://web.whatsapp.com', '_blank', 'width=1200,height=800,chrome=1');
+                
+                // Check if window was opened successfully
+                if (!syncWindow) {
+                    throw new Error('请允许弹出窗口以启动WhatsApp同步');
+                }
+
+                const eventSource = new EventSource('/api/messages/sync/messages');
+
+                eventSource.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${message.sender === 'me' ? 'sent' : 'received'}`;
+                    messageDiv.innerHTML = `
+                        <div>${message.content}</div>
+                        <div class="message-timestamp">${new Date(message.timestamp).toLocaleTimeString()}</div>
+                    `;
+                    messagesArea.appendChild(messageDiv);
+                    messagesArea.scrollTop = messagesArea.scrollHeight;
+                };
+
+                eventSource.onerror = (error) => {
+                    console.error("EventSource failed:", error);
+                    eventSource.close();
+                };
+
+                // Poll window status (removed setInterval)
+                window.addEventListener('message', (event) => {
+                    if (event.data.type === 'SYNC_SUCCESS') {
+                        document.getElementById('sync-status').textContent = '同步状态：已连接';
+                        document.getElementById('sync-status').style.color = 'green';
+                        loadContacts();
+                    } else if (event.data.type === 'SYNC_ERROR') {
+                        document.getElementById('sync-status').textContent = `错误：${event.data.error}`;
+                        document.getElementById('sync-status').style.color = 'red';
+                    }
+                });
+
+                // Add sync status indicator
+                const statusIndicator = document.createElement('div');
+                statusIndicator.id = 'sync-status';
+                statusIndicator.style.marginTop = '10px';
+                document.querySelector('.sync-controls').appendChild(statusIndicator);
+
+                // Handle window closing
+                window.addEventListener('beforeunload', () => {
+                    if (!syncWindow.closed) {
+                        syncWindow.close();
+                        fetch('/api/messages/sync/stop', { method: 'POST' });
+                    }
+                    eventSource.close();
+                });
+
+            } catch (error) {
+                console.error('Sync start failed:', error);
+                alert(error.message);
+            }
+        });
+
+        // Stop sync
+        stopSyncBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/messages/sync/stop', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to stop sync');
+                }
+                
+                alert('Sync stopped successfully');
+            } catch (error) {
+                console.error('Sync stop failed:', error);
+                alert(error.message);
+            }
+        });
+
+        // Initial load
+        loadContacts();
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统X - 消息</title>
+    <style>
+        #chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #messages {
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+        }
+        .message .sender {
+            font-weight: bold;
+            color: #333;
+        }
+        .message .timestamp {
+            font-size: 0.8em;
+            color: #666;
+            margin-left: 10px;
+        }
+        .message .content {
+            margin-top: 5px;
+            color: #444;
+        }
+        #message-form {
+            display: flex;
+            gap: 10px;
+        }
+        #message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .sync-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .sync-controls.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <h1>系统X 消息中心</h1>
+        
+        <div class="sync-controls">
+            <p>消息同步服务未启动</p>
+            <button id="start-sync">启动消息同步</button>
+        </div>
+
+        <div id="messages"></div>
+        <form id="message-form">
+            <input type="text" id="message-input" placeholder="输入消息..." required>
+            <button type="submit">发送</button>
+        </form>
+    </div>
+
+    <script>
+        // 获取消息容器
+        const messagesContainer = document.getElementById('messages');
+        const syncControls = document.querySelector('.sync-controls');
+        
+        // 获取并显示消息
+        async function fetchMessages() {
+            try {
+                    const response = await fetch('/api/messages', { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+                const messages = await response.json();
+                
+                // 清空当前消息
+                messagesContainer.innerHTML = '';
+                
+                // 显示每条消息
+                messages.forEach(msg => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'message';
+                    
+                    const header = document.createElement('div');
+                    header.innerHTML = `
+                        <span class="sender">${msg.sender}</span>
+                        <span class="timestamp">${new Date(msg.timestamp).toLocaleString()}</span>
+                    `;
+                    
+                    const content = document.createElement('div');
+                    content.className = 'content';
+                    content.textContent = msg.content;
+                    
+                    messageDiv.appendChild(header);
+                    messageDiv.appendChild(content);
+                    messagesContainer.appendChild(messageDiv);
+                });
+                
+                // 自动滚动到底部
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            } catch (error) {
+                console.error('获取消息失败:', error);
+            }
+        }
+
+        // 发送消息
+        document.getElementById('message-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (message) {
+                try {
+                    const response = await fetch('/api/messages', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message })
+                    });
+                    
+                    if (response.ok) {
+                        input.value = '';
+                        fetchMessages();
+                    }
+                } catch (error) {
+                    console.error('发送消息失败:', error);
+                }
+            }
+        });
+
+        // 启动消息同步
+        document.getElementById('start-sync').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/messages/sync/start', {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '启动同步失败');
+                }
+                
+                syncControls.classList.add('hidden');
+                alert('消息同步已启动');
+            } catch (error) {
+                console.error('启动同步失败:', error);
+                alert(error.message);
+            }
+        });
+
+        // 每5秒刷新一次消息
+        fetchMessages();
+        setInterval(fetchMessages, 5000);
+    </script>
+</body>
+</html>

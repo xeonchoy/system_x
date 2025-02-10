@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System X - Dashboard</title>
+    <style>
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .welcome-message {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .dashboard-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .dashboard-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .dashboard-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="welcome-message">
+            Welcome back, {{ username }}!
+        </div>
+        
+        <div class="dashboard-sections">
+            <div class="dashboard-card">
+                <h3>Recent Activity</h3>
+                <div id="recent-activity">
+                    <!-- Recent activity will be loaded here -->
+                </div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h3>Quick Actions</h3>
+                <div class="quick-actions">
+                    <button onclick="location.href='/messages'">View Messages</button>
+                    <button onclick="location.href='/notes'">View Notes</button>
+                    <button onclick="location.href='/chat'">Go to Chat</button>
+                    <button onclick="location.href='/settings'">Account Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

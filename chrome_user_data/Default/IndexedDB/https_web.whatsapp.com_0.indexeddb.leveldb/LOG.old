@@ -1,0 +1,10 @@
+2025/01/25-04:34:03.236 1514 Reusing MANIFEST C:\Users\Xeon Gaming\Desktop\system_x\chrome_user_data\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/01/25-04:34:03.237 1514 Recovering log #142
+2025/01/25-04:34:03.238 1514 Reusing old log C:\Users\Xeon Gaming\Desktop\system_x\chrome_user_data\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000142.log 
+2025/01/25-04:34:03.238 1514 Delete type=2 #141
+2025/01/25-04:34:04.025 502c Compacting 1@1 + 1@2 files
+2025/01/25-04:34:04.091 502c Generated table #146@1: 25386 keys, 931328 bytes
+2025/01/25-04:34:04.091 502c Compacted 1@1 + 1@2 files => 931328 bytes
+2025/01/25-04:34:04.092 502c compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/01/25-04:34:04.093 502c Delete type=2 #139
+2025/01/25-04:34:04.093 502c Delete type=2 #144
